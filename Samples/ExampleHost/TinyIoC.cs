@@ -897,7 +897,7 @@ namespace TinyIoC
 						try
 						{
 							var asm = Assembly.Load(name);
-							assemblies.Add(asm);
+							assemblies.Record(asm);
 						}
 						catch
 						{

@@ -1694,7 +1694,7 @@ namespace LiquidProjections.Logging.LogProviders
                     entryType.GetPropertyPortable("Categories"),
                     Expression.ListInit(
                         Expression.New(typeof(List<string>)),
-                        typeof(List<string>).GetMethodPortable("Add", typeof(string)),
+                        typeof(List<string>).GetMethodPortable("Record", typeof(string)),
                         logNameParameter)));
             return memberInit;
         }
