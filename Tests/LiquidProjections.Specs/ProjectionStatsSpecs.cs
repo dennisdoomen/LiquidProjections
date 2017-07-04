@@ -345,23 +345,26 @@ namespace LiquidProjections.Specs
         }
 
         [Fact]
-        public void When_the_projector_is_ahead_of_the_requested_checkpoint_the_eta_should_be_null()
+        public void When_the_projector_is_ahead_of_the_requested_checkpoint_the_eta_should_be_zero()
         {
             //-----------------------------------------------------------------------------------------------------------
             // Arrange
             //-----------------------------------------------------------------------------------------------------------
-            var stats = new ProjectionStats(() => DateTime.UtcNow);
+            DateTime utcNow = new DateTime(2017, 7, 4, 11, 50, 0, DateTimeKind.Utc);
+            var stats = new ProjectionStats(() => utcNow);
+            stats.TrackProgress("myProjector", 1000);
 
             //-----------------------------------------------------------------------------------------------------------
             // Act
             //-----------------------------------------------------------------------------------------------------------
+            utcNow = new DateTime(2017, 7, 4, 11, 52, 0, DateTimeKind.Utc);
             stats.TrackProgress("myProjector", 10000);
 
             //-----------------------------------------------------------------------------------------------------------
             // Assert
             //-----------------------------------------------------------------------------------------------------------
             TimeSpan? eta = stats.GetTimeToReach("myProjector", 5000);
-            eta.Should().NotHaveValue();
+            eta.Should().Be(TimeSpan.Zero);
         }
 
         [Fact]
