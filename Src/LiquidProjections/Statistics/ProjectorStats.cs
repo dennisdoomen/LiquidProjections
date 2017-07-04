@@ -128,15 +128,8 @@ namespace LiquidProjections.Statistics
         {
             lock (progressSyncObject)
             {
-                if (!lastMinuteSamples.HasBaselineBeenSet)
-                {
-                    lastMinuteSamples.SetBaseline(checkpoint, timestampUtc);
-                    last10MinuteSamples.SetBaseline(checkpoint, timestampUtc);
-                }
-
                 lastMinuteSamples.Record(checkpoint, timestampUtc);
                 last10MinuteSamples.Record(checkpoint, timestampUtc);
-
                 lastCheckpoint = new TimestampedCheckpoint(checkpoint, timestampUtc);
             }
         }
