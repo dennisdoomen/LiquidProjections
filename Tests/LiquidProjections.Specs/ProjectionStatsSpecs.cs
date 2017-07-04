@@ -29,7 +29,7 @@ namespace LiquidProjections.Specs
             //-----------------------------------------------------------------------------------------------------------
             // Assert
             //-----------------------------------------------------------------------------------------------------------
-            var projectorStats = stats.Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
+            var projectorStats = stats.GetForAllProjectors().Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
             projectorStats.LastCheckpoint.Checkpoint.Should().Be(2000);
             projectorStats.LastCheckpoint.TimestampUtc.Should().Be(nowUtc);
         }
@@ -53,7 +53,7 @@ namespace LiquidProjections.Specs
             //-----------------------------------------------------------------------------------------------------------
             // Assert
             //-----------------------------------------------------------------------------------------------------------
-            var projectorStats = stats.Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
+            var projectorStats = stats.GetForAllProjectors().Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
 
             projectorStats.GetProperties().Should().ContainKey("theName");
             projectorStats.GetProperties()["theName"].ShouldBeEquivalentTo(new
@@ -83,7 +83,7 @@ namespace LiquidProjections.Specs
             //-----------------------------------------------------------------------------------------------------------
             // Assert
             //-----------------------------------------------------------------------------------------------------------
-            var projectorStats = stats.Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
+            var projectorStats = stats.GetForAllProjectors().Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
 
             projectorStats.GetProperties().Should().ContainKey("aName");
             projectorStats.GetProperties()["aName"].ShouldBeEquivalentTo(new
@@ -121,7 +121,7 @@ namespace LiquidProjections.Specs
             //-----------------------------------------------------------------------------------------------------------
             // Assert
             //-----------------------------------------------------------------------------------------------------------
-            var projectorStats = stats.Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
+            var projectorStats = stats.GetForAllProjectors().Should().ContainSingle(s => s.ProjectorId == "myProjector").Subject;
             projectorStats.GetEvents().ShouldAllBeEquivalentTo(new[]
             {
                 new
