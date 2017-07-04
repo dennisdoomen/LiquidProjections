@@ -15,11 +15,8 @@ namespace LiquidProjections.Statistics
     {
         private readonly object eventsSyncObject = new object();
         private readonly object progressSyncObject = new object();
-
-        private readonly ConcurrentDictionary<string, Property> properties =
-            new ConcurrentDictionary<string, Property>();
-
-        private readonly List<Event> events = new List<Event>();
+        private readonly ConcurrentDictionary<string, Property> properties;
+        private readonly List<Event> events;
 
         private readonly WeightedProjectionSpeedCalculator lastMinuteSamples =
             new WeightedProjectionSpeedCalculator(12, TimeSpan.FromSeconds(5));
@@ -27,26 +24,34 @@ namespace LiquidProjections.Statistics
         private readonly WeightedProjectionSpeedCalculator last10MinuteSamples
             = new WeightedProjectionSpeedCalculator(9, TimeSpan.FromMinutes(1));
 
+        private TimestampedCheckpoint lastCheckpoint;
+
         public ProjectorStats(string projectorId)
         {
+            properties = new ConcurrentDictionary<string, Property>();
+            events = new List<Event>();
             ProjectorId = projectorId;
         }
 
         public ProjectorStats(string projectorId, IDictionary<string, Property> properties, IEnumerable<Event> events)
         {
             this.properties = new ConcurrentDictionary<string, Property>(properties);
-
-            foreach (Event @event in events)
-            {
-                this.events.Add(@event);
-            }
-
+            this.events = this.events.ToList();
             ProjectorId = projectorId;
         }
 
         public string ProjectorId { get; }
 
-        public TimestampedCheckpoint LastCheckpoint { get; set; }
+        public TimestampedCheckpoint LastCheckpoint
+        {
+            get
+            {
+                lock (progressSyncObject)
+                {
+                    return lastCheckpoint;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets a snapshot of the properties stored for this projector at the time of calling.
@@ -85,22 +90,37 @@ namespace LiquidProjections.Statistics
         {
             lock (progressSyncObject)
             {
+                if (lastCheckpoint == null)
+                {
+                    return null;
+                }
+
+                if (targetCheckpoint <= lastCheckpoint.Checkpoint)
+                {
+                    return TimeSpan.Zero;
+                }
+                
                 float speed = lastMinuteSamples.GetWeightedSpeed();
 
                 speed = (speed == 0)
                     ? last10MinuteSamples.GetWeightedSpeed()
                     : last10MinuteSamples.GetWeightedSpeedIncluding(speed);
 
-                if (speed > 0)
-                {
-                    long seconds = (long) ((targetCheckpoint - LastCheckpoint.Checkpoint) / speed);
-                    return TimeSpan.FromSeconds(seconds);
-                }
-                else
+                if (speed == 0)
                 {
                     return null;
                 }
                 
+                float secondsWithFractionalPart = (targetCheckpoint - lastCheckpoint.Checkpoint) / speed;
+
+                if (secondsWithFractionalPart > long.MaxValue)
+                {
+                    return null;
+                }
+
+                long secondsWithoutFractionalPart = (long) secondsWithFractionalPart;
+
+                return TimeSpan.FromSeconds(secondsWithoutFractionalPart);
             }
         }
 
@@ -108,16 +128,9 @@ namespace LiquidProjections.Statistics
         {
             lock (progressSyncObject)
             {
-                if (!lastMinuteSamples.HasBaselineBeenSet)
-                {
-                    lastMinuteSamples.SetBaseline(checkpoint, timestampUtc);
-                    last10MinuteSamples.SetBaseline(checkpoint, timestampUtc);
-                }
-
                 lastMinuteSamples.Record(checkpoint, timestampUtc);
                 last10MinuteSamples.Record(checkpoint, timestampUtc);
-
-                LastCheckpoint = new TimestampedCheckpoint(checkpoint, timestampUtc);
+                lastCheckpoint = new TimestampedCheckpoint(checkpoint, timestampUtc);
             }
         }
     }
