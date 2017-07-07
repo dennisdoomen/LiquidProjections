@@ -1,5 +1,6 @@
 #tool "nuget:?package=xunit.runner.console"
 #tool "nuget:?package=GitVersion.CommandLine"
+#tool "nuget:?package=ILRepack"
 
 //////////////////////////////////////////////////////////////////////
 // ARGUMENTS
@@ -71,6 +72,17 @@ Task("Build")
     }
 });
 
+Task("Merge")
+	.IsDependentOn("Build)
+	.Does(() => 
+	{
+		ILRepack(
+			"./MergedCake.exe",
+			"./Cake.exe",
+			assemblyPaths,
+			new ILRepackSettings { Internalize = true });
+	});
+
 Task("Run-Unit-Tests")
     .Does(() =>
 {
@@ -98,7 +110,15 @@ Task("Pack")
 			{ "nugetversion", gitVersion.NuGetVersionV2 }
 		}
       });        
-	  	  
+
+      NuGetPack("./src/LiquidProjections.Owin/.nuspec", new NuGetPackSettings {
+        OutputDirectory = "./Artifacts",
+        Version = gitVersion.NuGetVersionV2,
+		Properties = new Dictionary<string, string> {
+			{ "nugetversion", gitVersion.NuGetVersionV2 }
+		}
+      });        
+	  
 	  NuGetPack("./src/LiquidProjections.Testing/.nuspec", new NuGetPackSettings {
         OutputDirectory = "./Artifacts",
         Version = gitVersion.NuGetVersionV2,
