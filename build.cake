@@ -1,5 +1,7 @@
 #tool "nuget:?package=xunit.runner.console"
 #tool "nuget:?package=GitVersion.CommandLine"
+#tool "nuget:?package=ILRepack"
+#addin "Cake.Incubator"
 
 //////////////////////////////////////////////////////////////////////
 // ARGUMENTS
@@ -33,10 +35,6 @@ Task("GitVersion").Does(() => {
 	});
 });
 
-Task("SyncNugetDependencies").Does(() => {
-	
-});
-
 Task("Restore-NuGet-Packages")
     .IsDependentOn("Clean")
     .Does(() =>
@@ -50,7 +48,7 @@ Task("Restore-NuGet-Packages")
 });
 
 Task("Build")
-    .IsDependentOn("Restore-NuGet-Packages")
+    .IsDependentOn("GitVersion")
     .Does(() =>
 {
     if(IsRunningOnWindows())
@@ -71,6 +69,44 @@ Task("Build")
     }
 });
 
+Task("Merge")
+    .IsDependentOn("Build")
+	.Does(() => 
+	{
+	
+		ILRepack(
+			"./Artifacts/net452/LiquidProjections.Owin.dll",
+			"./Src/LiquidProjections.Owin/bin/" + configuration + "/net452/LiquidProjections.Owin.dll",
+			new FilePath[] {
+				"./Src/LiquidProjections.Owin/bin/" + configuration + "/net452/Nancy.dll",
+				"./Src/LiquidProjections.Owin/bin/" + configuration + "/net452/Nancy.Metadata.Modules.dll",
+				"./Src/LiquidProjections.Owin/bin/" + configuration + "/net452/Nancy.Swagger.dll",
+				"./Src/LiquidProjections.Owin/bin/" + configuration + "/net452/Swagger.ObjectModel.dll"
+			},
+			new ILRepackSettings 
+			{ 
+				Internalize = true,
+				XmlDocs = true
+			});
+
+			ILRepack(
+			"./Artifacts/netstandard1.6/LiquidProjections.Owin.dll",
+			"./Src/LiquidProjections.Owin/bin/" + configuration + "/netstandard1.6/LiquidProjections.Owin.dll",
+			new FilePath[] {
+				"./packages/Nancy.2.0.0-clinteastwood/lib/netstandard1.6/Nancy.dll",
+				"./packages/Nancy.Metadata.Modules.2.0.0-barneyrubble/lib/netstandard1.6/Nancy.Metadata.Modules.dll",
+				"./packages/Nancy.Swagger.2.2.12-alpha/lib/netstandard1.6/Nancy.Swagger.dll",
+				"./packages/Swagger.ObjectModel.2.2.12-alpha/lib/netstandard1.6/Swagger.ObjectModel.dll"
+			},
+			new ILRepackSettings 
+			{ 
+				Internalize = true,
+				XmlDocs = true
+			});
+			
+		CopyFile("./Artifacts/net452/LiquidProjections.Owin.dll", "./Tests/LiquidProjections.Specs/bin/" + configuration +"/LiquidProjections.Owin.dll");
+	});
+
 Task("Run-Unit-Tests")
     .Does(() =>
 {
@@ -80,7 +116,7 @@ Task("Run-Unit-Tests")
 
 Task("Pack")
     .IsDependentOn("GitVersion")
-	.IsDependentOn("Build")
+	.IsDependentOn("Merge")
     .Does(() => 
     {
       NuGetPack("./src/LiquidProjections.Abstractions/.nuspec", new NuGetPackSettings {
@@ -98,7 +134,15 @@ Task("Pack")
 			{ "nugetversion", gitVersion.NuGetVersionV2 }
 		}
       });        
-	  	  
+
+      NuGetPack("./src/LiquidProjections.Owin/.nuspec", new NuGetPackSettings {
+        OutputDirectory = "./Artifacts",
+        Version = gitVersion.NuGetVersionV2,
+		Properties = new Dictionary<string, string> {
+			{ "nugetversion", gitVersion.NuGetVersionV2 }
+		}
+      });        
+	  
 	  NuGetPack("./src/LiquidProjections.Testing/.nuspec", new NuGetPackSettings {
         OutputDirectory = "./Artifacts",
         Version = gitVersion.NuGetVersionV2,
@@ -113,8 +157,8 @@ Task("Pack")
 //////////////////////////////////////////////////////////////////////
 
 Task("Default")
-	.IsDependentOn("GitVersion")
-    .IsDependentOn("Build")
+	.IsDependentOn("Restore-NuGet-Packages")
+	.IsDependentOn("Merge")
     .IsDependentOn("Run-Unit-Tests")
     .IsDependentOn("Pack");
 
